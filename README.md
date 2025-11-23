@@ -60,6 +60,51 @@ python app.py
 
 The server will start on `http://localhost:5001`
 
+---
+
+## 🐳 Docker Installation (Alternative)
+
+### Option 1: Using Docker Compose (Recommended)
+
+```bash
+# Build and start the container
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+
+# Stop the container
+docker-compose down
+```
+
+The API will be available at `http://localhost:5001`
+
+### Option 2: Using Docker directly
+
+```bash
+# Build the image
+docker build -t healthcare-api .
+
+# Run the container
+docker run -d \
+  -p 5001:5001 \
+  -e JWT_SECRET=your-secret-key \
+  -v $(pwd)/instance:/app/instance \
+  --name healthcare-api \
+  healthcare-api
+
+# View logs
+docker logs -f healthcare-api
+
+# Stop the container
+docker stop healthcare-api
+docker rm healthcare-api
+```
+
+**Note**: The `-v $(pwd)/instance:/app/instance` flag persists the database between container restarts.
+
+---
+
 ## 📚 API Routes
 
 ### Quick Reference Table
