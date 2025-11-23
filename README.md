@@ -1,29 +1,32 @@
 # Healthcare Subscription Management System
 
-A Flask-based REST API for managing healthcare subscription plans. Users can signup, login, view available subscription plans, and manage their subscriptions.
+A Flask-based REST API for managing healthcare subscription plans with visit tracking. Users can signup, login, view available subscription plans, manage their subscriptions, and track healthcare visits with automatic billing.
 
-## Features
+## 🌟 Features
 
-- User authentication (signup/login/logout) with JWT tokens
-- Four subscription plans with different pricing tiers
-- Subscription management (create, view, cancel)
-- SQLite database for easy setup
+- **User Authentication** - JWT-based signup/login/logout
+- **Subscription Plans** - Four pricing tiers from $25 to $120/month
+- **Subscription Management** - Subscribe, view, and cancel subscriptions
+- **Visit Tracking** - Record healthcare visits with automatic billing
+- **Smart Billing** - Free visits within plan limits, automatic charges for extras
+- **Monthly Usage Summary** - Track visits used and remaining balance
+- **SQLite Database** - Easy setup, no external database required
 
-## Subscription Plans
+## 💊 Subscription Plans
 
-| Plan | Price | Included Visits | Extra Visit Price | Services |
-|------|-------|----------------|-------------------|----------|
-| Lite Care Pack | $25/month | 2 | $15 | Basic check-up |
-| Standard Health Pack | $45/month | 4 | $20 | Check-up, Blood analysis |
-| Chronic Care Pack | $80/month | 8 | $18 | Blood tests, X-ray, ECG |
-| Unlimited Premium Pack | $120/month | Unlimited | $0 | All diagnostics, X-ray, Ultrasound |
+| Plan | Price/Month | Included Visits | Extra Visit Price | Services |
+|------|------------|----------------|-------------------|----------|
+| Lite Care Pack | $25 | 2 | $15 | Basic check-up |
+| Standard Health Pack | $45 | 4 | $20 | Check-up, Blood analysis |
+| Chronic Care Pack | $80 | 8 | $18 | Blood tests, X-ray, ECG |
+| Unlimited Premium Pack | $120 | ∞ Unlimited | $0 | All diagnostics, X-ray, Ultrasound |
 
-## Installation
+## 📦 Installation & Setup
 
-### 1. Clone/Navigate to the project
+### 1. Navigate to the project
 
 ```bash
-cd fixed_module-6
+cd module-6_fix
 ```
 
 ### 2. Create virtual environment
@@ -39,13 +42,15 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### 4. Set JWT secret (optional for development)
+### 4. Configure environment (optional)
 
+Edit `.env` file to customize settings:
 ```bash
-export JWT_SECRET='your-super-secret-key-here'
+HOST=0.0.0.0
+PORT=5001
+FLASK_ENV=development
+JWT_SECRET=your-secret-key-here
 ```
-
-If not set, a development default will be used (with a warning).
 
 ### 5. Run the application
 
@@ -53,128 +58,486 @@ If not set, a development default will be used (with a warning).
 python app.py
 ```
 
-The server will start on `http://localhost:5000`
+The server will start on `http://localhost:5001`
 
-## API Endpoints
+## 📚 API Routes
 
-### Authentication
+### Quick Reference Table
 
-#### Signup
-```http
-POST /api/auth/signup
-Content-Type: application/json
+| Method | Endpoint | Auth Required | Description |
+|--------|----------|---------------|-------------|
+| `POST` | `/api/auth/signup` | ❌ No | Create new user account |
+| `POST` | `/api/auth/login` | ❌ No | Login and get JWT token |
+| `POST` | `/api/auth/logout` | ❌ No | Logout and clear token |
+| `GET` | `/api/auth/me` | ✅ Yes | Get current user info |
+| `GET` | `/api/plans` | ✅ Yes | List all available plans |
+| `GET` | `/api/subscriptions` | ✅ Yes | View your subscriptions |
+| `POST` | `/api/subscriptions` | ✅ Yes | Subscribe to a plan |
+| `DELETE` | `/api/subscriptions/<id>` | ✅ Yes | Cancel a subscription |
+| `POST` | `/api/visits` | ✅ Yes | Record a healthcare visit |
+| `GET` | `/api/visits` | ✅ Yes | Get your visit history |
+| `GET` | `/api/visits/summary` | ✅ Yes | Get visit usage summary |
 
+---
+
+## 🔐 Authentication Endpoints
+
+### 1. Signup - Create New Account
+
+**`POST /api/auth/signup`**
+
+Create a new user account.
+
+**Request:**
+```json
 {
   "username": "john_doe",
   "password": "secure_password"
 }
 ```
 
-#### Login
-```http
-POST /api/auth/login
-Content-Type: application/json
+**Response (201 Created):**
+```json
+{
+  "message": "User registered successfully"
+}
+```
 
+**Errors:**
+- `400` - Username or password missing
+- `400` - User already exists
+
+---
+
+### 2. Login - Get Authentication Token
+
+**`POST /api/auth/login`**
+
+Authenticate and receive JWT token in HTTP-only cookie.
+
+**Request:**
+```json
 {
   "username": "john_doe",
   "password": "secure_password"
 }
 ```
 
-Returns a JWT token in a cookie.
-
-#### Logout
-```http
-POST /api/auth/logout
-```
-
-#### Get Current User
-```http
-GET /api/auth/me
-Authorization: Bearer <token>
-```
-
-### Subscription Plans
-
-#### List All Plans
-```http
-GET /api/plans
-Authorization: Bearer <token>
-```
-
-#### View My Subscriptions
-```http
-GET /api/subscriptions
-Authorization: Bearer <token>
-```
-
-#### Subscribe to a Plan
-```http
-POST /api/subscriptions
-Authorization: Bearer <token>
-Content-Type: application/json
-
+**Response (200 OK):**
+```json
 {
-  "plan_id": 1,
+  "message": "Login successful",
+  "username": "john_doe"
+}
+```
+
+**Errors:**
+- `400` - Username or password missing
+- `401` - Invalid credentials
+
+---
+
+### 3. Logout - Clear Session
+
+**`POST /api/auth/logout`**
+
+Logout by clearing the JWT cookie.
+
+**Response (200 OK):**
+```json
+{
+  "message": "Logged out successfully"
+}
+```
+
+---
+
+### 4. Get Current User
+
+**`GET /api/auth/me`**
+
+Get information about the currently authenticated user.
+
+**Headers:**
+```
+Authorization: Bearer <token>
+```
+
+**Response (200 OK):**
+```json
+{
+  "id": 1,
+  "username": "john_doe"
+}
+```
+
+**Errors:**
+- `401` - Token invalid or missing
+- `404` - User not found
+
+---
+
+## 💊 Plan & Subscription Endpoints
+
+### 5. List All Plans
+
+**`GET /api/plans`**
+
+Get all available subscription plans.
+
+**Headers:**
+```
+Authorization: Bearer <token>
+```
+
+**Response (200 OK):**
+```json
+[
+  {
+    "id": 1,
+    "name": "Lite Care Pack",
+    "price": 25.0,
+    "included_visits": 2,
+    "extra_visit_price": 15.0,
+    "services": ["Basic check-up"]
+  },
+  {
+    "id": 2,
+    "name": "Standard Health Pack",
+    "price": 45.0,
+    "included_visits": 4,
+    "extra_visit_price": 20.0,
+    "services": ["Check-up", "Blood analysis"]
+  }
+]
+```
+
+---
+
+### 6. View My Subscriptions
+
+**`GET /api/subscriptions`**
+
+Get all your subscriptions (active and expired).
+
+**Headers:**
+```
+Authorization: Bearer <token>
+```
+
+**Response (200 OK):**
+```json
+[
+  {
+    "id": 1,
+    "plan_name": "Standard Health Pack",
+    "plan_id": 2,
+    "start_date": "2025-11-23",
+    "end_date": "2025-12-23",
+    "active": true
+  }
+]
+```
+
+---
+
+### 7. Subscribe to a Plan
+
+**`POST /api/subscriptions`**
+
+Subscribe to a healthcare plan.
+
+**Headers:**
+```
+Authorization: Bearer <token>
+```
+
+**Request:**
+```json
+{
+  "plan_id": 2,
   "duration_days": 30
 }
 ```
 
-#### Cancel Subscription
-```http
-DELETE /api/subscriptions/<subscription_id>
+**Response (201 Created):**
+```json
+{
+  "message": "Subscription created successfully",
+  "subscription_id": 1,
+  "plan_name": "Standard Health Pack",
+  "start_date": "2025-11-23",
+  "end_date": "2025-12-23"
+}
+```
+
+**Errors:**
+- `400` - plan_id is required
+- `404` - Plan not found
+- `400` - Already have an active subscription
+
+---
+
+### 8. Cancel Subscription
+
+**`DELETE /api/subscriptions/<subscription_id>`**
+
+Cancel a subscription.
+
+**Headers:**
+```
 Authorization: Bearer <token>
 ```
 
-## Usage Example
+**Response (200 OK):**
+```json
+{
+  "message": "Subscription cancelled successfully"
+}
+```
+
+**Errors:**
+- `404` - Subscription not found
+- `403` - Unauthorized (not your subscription)
+
+---
+
+## 🏥 Visit Tracking Endpoints
+
+### 9. Record a Visit
+
+**`POST /api/visits`**
+
+Record a healthcare visit. Automatically calculates billing based on your plan.
+
+**Headers:**
+```
+Authorization: Bearer <token>
+```
+
+**Request:**
+```json
+{
+  "subscription_id": 1,
+  "notes": "Regular checkup"
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "message": "Visit recorded successfully",
+  "visit_id": 1,
+  "visit_date": "2025-11-24T10:30:00",
+  "cost": 0,
+  "charged": false,
+  "visits_used_this_month": 1,
+  "remaining_free_visits": 3,
+  "plan_name": "Standard Health Pack"
+}
+```
+
+**Billing Logic:**
+- **Within limit**: `cost: 0` (free visit)
+- **Exceeded limit**: `cost: 20` (charged extra visit price)
+- **Unlimited plan**: Always `cost: 0`
+
+**Errors:**
+- `400` - subscription_id is required
+- `404` - Subscription not found
+- `403` - Unauthorized (not your subscription)
+- `400` - Subscription has expired
+
+---
+
+### 10. Get Visit History
+
+**`GET /api/visits`**
+
+Get detailed history of all your healthcare visits.
+
+**Headers:**
+```
+Authorization: Bearer <token>
+```
+
+**Response (200 OK):**
+```json
+{
+  "visits": [
+    {
+      "visit_id": 5,
+      "visit_date": "2025-11-24T10:30:00",
+      "subscription_id": 1,
+      "plan_name": "Standard Health Pack",
+      "cost": 20.0,
+      "was_charged": true,
+      "notes": "Exceeded monthly limit"
+    },
+    {
+      "visit_id": 4,
+      "visit_date": "2025-11-23T14:20:00",
+      "subscription_id": 1,
+      "plan_name": "Standard Health Pack",
+      "cost": 0,
+      "was_charged": false,
+      "notes": "Regular checkup"
+    }
+  ],
+  "total_visits": 5
+}
+```
+
+---
+
+### 11. Get Visit Usage Summary
+
+**`GET /api/visits/summary`**
+
+Get summary of visit usage, remaining visits, and charges for all active subscriptions.
+
+**Headers:**
+```
+Authorization: Bearer <token>
+```
+
+**Response (200 OK):**
+```json
+{
+  "subscriptions": [
+    {
+      "subscription_id": 1,
+      "plan_name": "Standard Health Pack",
+      "plan_price": 45.0,
+      "included_visits": 4,
+      "visits_used_this_month": 5,
+      "total_visits_all_time": 12,
+      "remaining_free_visits": 0,
+      "extra_visit_price": 20.0,
+      "charges_this_month": 20.0,
+      "status": "exceeded",
+      "active_until": "2025-12-23"
+    }
+  ],
+  "total_extra_charges": 20.0,
+  "month": "November 2025"
+}
+```
+
+**Status values:**
+- `within_limit` - Still have free visits remaining
+- `exceeded` - Used more than included visits (extra charges apply)
+- `unlimited` - Unlimited plan (no charges)
+
+---
+
+## 💡 Usage Example
 
 ```bash
 # 1. Signup
-curl -X POST http://localhost:5000/api/auth/signup \
+curl -X POST http://localhost:5001/api/auth/signup \
   -H "Content-Type: application/json" \
-  -d '{"username":"test_user","password":"test123"}'
+  -d '{"username":"john","password":"pass123"}'
 
-# 2. Login (save the cookie)
-curl -X POST http://localhost:5000/api/auth/login \
+# 2. Login (save cookie)
+curl -X POST http://localhost:5001/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"username":"test_user","password":"test123"}' \
+  -d '{"username":"john","password":"pass123"}' \
   -c cookies.txt
 
-# 3. View plans
-curl -X GET http://localhost:5000/api/plans \
+# 3. View available plans
+curl -X GET http://localhost:5001/api/plans \
   -b cookies.txt
 
-# 4. Subscribe to plan ID 2
-curl -X POST http://localhost:5000/api/subscriptions \
+# 4. Subscribe to Standard Health Pack (plan_id: 2)
+curl -X POST http://localhost:5001/api/subscriptions \
   -H "Content-Type: application/json" \
   -d '{"plan_id":2,"duration_days":30}' \
   -b cookies.txt
 
-# 5. View my subscriptions
-curl -X GET http://localhost:5000/api/subscriptions \
+# 5. Record a visit
+curl -X POST http://localhost:5001/api/visits \
+  -H "Content-Type: application/json" \
+  -d '{"subscription_id":1,"notes":"Regular checkup"}' \
+  -b cookies.txt
+
+# 6. Check visit usage
+curl -X GET http://localhost:5001/api/visits/summary \
   -b cookies.txt
 ```
 
-## Project Structure
+---
+
+## 📂 Project Structure
 
 ```
-fixed_module-6/
-├── app.py              # Main application file
-├── config.py           # Configuration settings
-├── models.py           # Database models (User, Plan, Subscription)
-├── auth.py             # Authentication blueprint and helpers
-├── routes.py           # Main routes (plans, subscriptions)
-├── requirements.txt    # Python dependencies
-└── README.md          # This file
+module-6_fix/
+├── app.py                          # Main application entry point
+├── .env                            # Environment variables
+├── .env.example                    # Environment template
+├── requirements.txt                # Python dependencies
+├── README.md                       # This file
+│
+├── instance/                       # Database storage
+│   └── subscriptions.db           # SQLite database
+│
+├── scripts/                        # Utility scripts
+│   └── init_data.py               # Initialize default plans
+│
+└── src/                            # Source code
+    ├── config/                     # Configuration
+    │   ├── database.py            # DB instance
+    │   └── settings.py            # Settings from .env
+    │
+    ├── controllers/                # API controllers
+    │   ├── routes.py              # Blueprint registration
+    │   ├── auth/                  # Authentication
+    │   │   └── routes.py          # Auth endpoints
+    │   ├── plans/                 # Plans & subscriptions
+    │   │   └── routes.py          # Plans endpoints
+    │   └── visits/                # Visit tracking
+    │       └── routes.py          # Visit endpoints
+    │
+    └── models/                     # Database models
+        ├── user.py                # User model
+        ├── plan.py                # Plan model
+        ├── subscription.py        # Subscription model
+        └── visit.py               # Visit model
 ```
 
-## Database
+---
 
-The application uses SQLite with the following schema:
+## 🗄️ Database Schema
 
-- **User**: id, username, password (hashed)
-- **Plan**: id, name, price, included_visits, extra_visit_price, services_json
-- **Subscription**: id, user_id, plan_id, start_date, end_date
+The application uses SQLite with the following tables:
+
+**User**
+- `id` - Primary key
+- `username` - Unique username
+- `password` - Bcrypt hashed password
+
+**Plan**
+- `id` - Primary key
+- `name` - Plan name
+- `price` - Monthly price
+- `included_visits` - Free visits per month (can be ∞)
+- `extra_visit_price` - Cost per visit after limit
+- `services_json` - JSON array of included services
+
+**Subscription**
+- `id` - Primary key
+- `user_id` - Foreign key to User
+- `plan_id` - Foreign key to Plan
+- `start_date` - Subscription start date
+- `end_date` - Subscription expiration date
+
+**Visit** *(New)*
+- `id` - Primary key
+- `user_id` - Foreign key to User
+- `subscription_id` - Foreign key to Subscription
+- `visit_date` - Timestamp of visit
+- `cost` - Amount charged (0 if within limit)
+- `notes` - Optional visit notes
 
 ## Security Notes
 

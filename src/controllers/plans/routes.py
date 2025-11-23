@@ -1,10 +1,11 @@
-"""Main routes blueprint for subscription plans."""
+"""Plans and subscriptions routes."""
 
 from flask import Blueprint, request, jsonify, g
 import datetime
 
-from models import db, Plan, Subscription
-from auth import auth_required
+from src.models import Plan, Subscription
+from src.config.database import db
+from src.controllers.auth import auth_required
 
 plans_bp = Blueprint('plans', __name__)
 

@@ -5,104 +5,75 @@ A Flask application for managing healthcare subscription plans.
 Users can signup, login, view plans, and manage subscriptions.
 """
 
+import os
+import sys
 from flask import Flask, jsonify
-import json
+from flask_cors import CORS
 
-from config import config
-from models import db, Plan
-from auth import auth_bp
-from routes import plans_bp
+# Add project root to sys.path for 'src' module imports
+BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
+if BACKEND_DIR not in sys.path:
+    sys.path.insert(0, BACKEND_DIR)
 
 
-def create_app(config_object=config):
+def create_app():
     """Application factory pattern."""
     app = Flask(__name__)
-    app.config.from_object(config_object)
-
+    
+    # Enable CORS for all routes
+    CORS(app, resources={
+        r"/*": {
+            "origins": "*",
+            "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+            "allow_headers": ["Content-Type", "Authorization"],
+            "supports_credentials": True
+        }
+    })
+    
+    # Load configuration from settings
+    from src.config.settings import settings
+    settings.ensure_data_dir()
+    
+    app.config['SQLALCHEMY_DATABASE_URI'] = settings.SQLALCHEMY_DATABASE_URI
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = settings.SQLALCHEMY_TRACK_MODIFICATIONS
+    app.config['JWT_SECRET'] = settings.JWT_SECRET
+    
     # Initialize database
+    from src.config.database import db
     db.init_app(app)
-
-    # Register blueprints
-    app.register_blueprint(auth_bp, url_prefix='/api/auth')
-    app.register_blueprint(plans_bp, url_prefix='/api')
-
-    # Create tables and initialize data
+    
+    # Import models so they're registered with SQLAlchemy
+    from src.models import User, Plan, Subscription, Visit
+    
+    # Create tables
     with app.app_context():
         db.create_all()
+        
+        # Initialize default data using scripts
+        from scripts.init_data import init_default_plans
         init_default_plans()
+    
+    # Register API blueprints
+    from src.controllers.routes import register_blueprints
+    register_blueprints(app)
 
     # Root route
-    @app.route('/')
+    @app.route("/", methods=["GET"])
     def index():
         return jsonify({
+            'status': 'ok',
             'message': 'Healthcare Subscription API',
-            'endpoints': {
-                'auth': {
-                    'signup': 'POST /api/auth/signup',
-                    'login': 'POST /api/auth/login',
-                    'logout': 'POST /api/auth/logout',
-                    'me': 'GET /api/auth/me'
-                },
-                'plans': {
-                    'list': 'GET /api/plans',
-                    'subscriptions': 'GET /api/subscriptions',
-                    'subscribe': 'POST /api/subscriptions',
-                    'cancel': 'DELETE /api/subscriptions/<id>'
-                }
-            }
+            'version': '2.0',
+            'documentation': 'See README.md for full API documentation'
         })
 
     return app
 
 
-def init_default_plans():
-    """Initialize default subscription plans if they don't exist."""
-    if Plan.query.count() == 0:
-        plans = [
-            {
-                'name': 'Lite Care Pack',
-                'price': 25,
-                'included_visits': 2,
-                'extra_visit_price': 15,
-                'services': ['Basic check-up']
-            },
-            {
-                'name': 'Standard Health Pack',
-                'price': 45,
-                'included_visits': 4,
-                'extra_visit_price': 20,
-                'services': ['Check-up', 'Blood analysis']
-            },
-            {
-                'name': 'Chronic Care Pack',
-                'price': 80,
-                'included_visits': 8,
-                'extra_visit_price': 18,
-                'services': ['Blood tests', 'X-ray', 'ECG']
-            },
-            {
-                'name': 'Unlimited Premium Pack',
-                'price': 120,
-                'included_visits': float('inf'),
-                'extra_visit_price': 0,
-                'services': ['All diagnostics', 'X-ray', 'Ultrasound']
-            }
-        ]
-
-        for p in plans:
-            plan = Plan(
-                name=p['name'],
-                price=p['price'],
-                included_visits=p['included_visits'],
-                extra_visit_price=p['extra_visit_price'],
-                services_json=json.dumps(p['services'])
-            )
-            db.session.add(plan)
-
-        db.session.commit()
-        print(f"✓ Initialized {len(plans)} default subscription plans")
+# Create app instance
+app = create_app()
 
 
 if __name__ == '__main__':
-    app = create_app()
-    app.run(debug=True, host='0.0.0.0', port=5001)
+    from src.config.settings import settings
+    app.run(host=settings.HOST, port=settings.PORT, debug=settings.DEBUG)

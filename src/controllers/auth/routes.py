@@ -1,4 +1,4 @@
-"""Authentication blueprint and helpers."""
+"""Authentication routes."""
 
 from flask import Blueprint, current_app, request, jsonify, g, make_response
 from functools import wraps
@@ -6,7 +6,8 @@ import datetime
 import jwt
 import bcrypt
 
-from models import User, db
+from src.models import User
+from src.config.database import db
 
 auth_bp = Blueprint('auth', __name__)
 
